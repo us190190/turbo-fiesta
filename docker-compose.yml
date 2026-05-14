@@ -1,0 +1,49 @@
+name: "trader"
+
+services:
+  ntfy:
+    image: binwiederhier/ntfy
+    container_name: ntfy
+    restart: unless-stopped
+    command: serve
+    ports:
+      - "18080:80"
+    volumes:
+      - ntfy-cache:/var/cache/ntfy
+      - ntfy-config:/etc/ntfy
+    environment:
+      - NTFY_BASE_URL=${NTFY_BASE_URL}
+      - NTFY_CACHE_FILE=/var/cache/ntfy/cache.db
+      - NTFY_AUTH_FILE=/var/cache/ntfy/auth.db
+      - NTFY_AUTH_DEFAULT_ACCESS=deny-all
+
+  market-trader:
+    build: .
+    container_name: market-trader
+    restart: unless-stopped
+    depends_on:
+      - ntfy
+    ports:
+      - "18000:8000"
+    dns:
+      - 8.8.8.8
+      - 8.8.4.4
+    environment:
+      # Zerodha Kite
+      - KITE_API_KEY=${KITE_API_KEY}
+      - KITE_API_SECRET=${KITE_API_SECRET}
+      - KITE_ACCESS_TOKEN=${KITE_ACCESS_TOKEN}   # refresh daily
+      # ntfy notifications
+      - NTFY_SERVER=http://ntfy:80
+      - NTFY_TOPIC=${NTFY_TOPIC}
+      - NTFY_TOKEN=${NTFY_TOKEN}
+      # App
+      - APP_BASE_URL=${APP_BASE_URL}             # e.g. https://your-server.com
+      - CONFIRMATION_SECRET=${CONFIRMATION_SECRET}
+    volumes:
+      - ./app:/app
+      - ./logs:/app/logs
+
+volumes:
+  ntfy-cache:
+  ntfy-config:
